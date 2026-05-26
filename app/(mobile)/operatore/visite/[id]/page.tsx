@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { fetchQuery } from "convex/nextjs";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
+import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Clock3, MapPin, ShieldAlert } from "lucide-react";
 
@@ -15,6 +16,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+
+async function startVisit(shiftId: Id<"shifts">) {
+  "use server";
+
+  const { getToken, userId } = await auth();
+
+  if (!userId) {
+    throw new Error("Accesso richiesto.");
+  }
+
+  const token = await getToken({ template: "convex" });
+
+  if (!token) {
+    throw new Error("Accesso richiesto.");
+  }
+
+  await fetchMutation(api.shifts.startOperatorShift, { shiftId }, { token });
+
+  revalidatePath(`/operatore/visite/${shiftId}`);
+  revalidatePath("/operatore");
+  revalidatePath("/operatore/turni");
+}
 
 function formatVisitDateTime(date: number) {
   return new Date(date).toLocaleString("it-IT", {
@@ -156,7 +179,19 @@ export default async function VisitDetailPage({
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
-        <Button className="h-12">Inizia visita</Button>
+        <form action={startVisit.bind(null, visit.id)}>
+          <Button
+            type="submit"
+            className="h-12 w-full"
+            disabled={visit.status !== "programmato"}
+          >
+            {visit.status === "programmato"
+              ? "Inizia visita"
+              : visit.status === "in corso"
+                ? "Visita in corso"
+                : "Visita non avviabile"}
+          </Button>
+        </form>
         <Button variant="secondary" className="h-12">
           Chiama
         </Button>

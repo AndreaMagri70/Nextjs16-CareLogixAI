@@ -44,7 +44,7 @@ if (!isSignedIn) {
         
         {/* 1. Bottone posizionato SOPRA */}
         <Link href="/landing-page" passHref>
-          <Button className="rounded-md border-green-500 px-4 py-2 text-sm font-medium text-black shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors w-full">
+          <Button className="rounded-md border-green-200 px-4 py-2 text-sm font-medium text-black shadow-sm border hover:bg-gray-50 transition-colors w-full">
             Guarda la Landing Page
           </Button>
         </Link>

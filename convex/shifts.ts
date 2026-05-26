@@ -109,6 +109,50 @@ export const getOperatorShiftById = query({
   },
 });
 
+export const startOperatorShift = mutation({
+  args: {
+    shiftId: v.id("shifts"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Accesso richiesto.");
+    }
+
+    const operator = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!operator || operator.role !== "operator") {
+      throw new Error("Operatore non autorizzato.");
+    }
+
+    const shift = await ctx.db.get(args.shiftId);
+
+    if (
+      !shift ||
+      shift.operatorId !== operator._id ||
+      shift.tenantId !== operator.tenantId
+    ) {
+      throw new Error("Visita non disponibile.");
+    }
+
+    if (shift.status === "in corso") {
+      return;
+    }
+
+    if (shift.status !== "programmato") {
+      throw new Error("Questa visita non puo essere avviata.");
+    }
+
+    await ctx.db.patch(args.shiftId, {
+      status: "in corso",
+      clockIn: Date.now(),
+    });
+  },
+});
+
 export const getShiftFormOptions = query({
   args: {},
   handler: async (ctx) => {
