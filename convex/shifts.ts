@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { internalMutation, mutation, query } from "./_generated/server";
 
 const tenantId = "tenant_mock_123";
 
@@ -109,6 +110,24 @@ export const getOperatorShiftById = query({
   },
 });
 
+export const completeOperatorShift = internalMutation({
+  args: {
+    shiftId: v.id("shifts"),
+  },
+  handler: async (ctx, args) => {
+    const shift = await ctx.db.get(args.shiftId);
+
+    if (!shift || shift.status !== "in corso") {
+      return;
+    }
+
+    await ctx.db.patch(args.shiftId, {
+      status: "completato",
+      clockOut: Date.now(),
+    });
+  },
+});
+
 export const startOperatorShift = mutation({
   args: {
     shiftId: v.id("shifts"),
@@ -150,6 +169,12 @@ export const startOperatorShift = mutation({
       status: "in corso",
       clockIn: Date.now(),
     });
+
+    await ctx.scheduler.runAfter(
+      60 * 60 * 1000,
+      internal.shifts.completeOperatorShift,
+      { shiftId: args.shiftId }
+    );
   },
 });
 
