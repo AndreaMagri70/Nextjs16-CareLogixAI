@@ -4,6 +4,14 @@ import { internalMutation, mutation, query } from "./_generated/server";
 
 const tenantId = "tenant_mock_123";
 
+function requireText(value: string, fieldName: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`${fieldName} obbligatorio.`);
+  }
+  return trimmed;
+}
+
 export const getOperatorShiftsInRange = query({
   args: {
     rangeStart: v.number(),
@@ -216,14 +224,32 @@ export const createShift = mutation({
     tasks: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    if (!Number.isFinite(args.date)) {
+      throw new Error("Data non valida.");
+    }
+
+    const operator = await ctx.db.get(args.operatorId);
+    const patient = await ctx.db.get(args.patientId);
+
+    if (!operator || operator.tenantId !== tenantId || operator.role !== "operator") {
+      throw new Error("Operatore non valido.");
+    }
+
+    if (!patient || patient.tenantId !== tenantId) {
+      throw new Error("Paziente non valido.");
+    }
+
+    const serviceType = requireText(args.serviceType, "Servizio");
+    const tasks = args.tasks.map((task) => task.trim()).filter(Boolean);
+
     return await ctx.db.insert("shifts", {
       tenantId,
       operatorId: args.operatorId,
       patientId: args.patientId,
       date: args.date,
-      serviceType: args.serviceType,
+      serviceType,
       status: "programmato",
-      tasks: args.tasks.map((description) => ({
+      tasks: tasks.map((description) => ({
         description,
         isCompleted: false,
       })),

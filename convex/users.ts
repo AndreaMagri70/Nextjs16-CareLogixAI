@@ -2,6 +2,24 @@ import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { api } from "./_generated/api";
 
+const validEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function requireText(value: string, fieldName: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`${fieldName} obbligatorio.`);
+  }
+  return trimmed;
+}
+
+function requireEmail(value: string) {
+  const email = requireText(value, "Email").toLowerCase();
+  if (!validEmailPattern.test(email)) {
+    throw new Error("Email non valida.");
+  }
+  return email;
+}
+
 async function resolveTenantId(ctx: any) {
   let tenantId = "tenant_mock_123";
   const identity = await ctx.auth.getUserIdentity();
@@ -98,8 +116,8 @@ export const createUser = mutation({
       tenantId,
       clerkId: clerkId ?? "",
       role,
-      name,
-      email,
+      name: requireText(name, "Nome"),
+      email: requireEmail(email),
       status,
     });
   },
@@ -119,8 +137,8 @@ export const _insertUserWithClerkId = mutation({
       tenantId,
       clerkId,
       role,
-      name,
-      email,
+      name: requireText(name, "Nome"),
+      email: requireEmail(email),
       status,
     });
   },
@@ -134,6 +152,8 @@ export const createUserWithClerk = action({
     role: v.union(v.literal("admin"), v.literal("operator")),
   },
   handler: async (ctx: any, { name, email, status, role }: any): Promise<any> => {
+    const validatedName = requireText(name, "Nome");
+    const validatedEmail = requireEmail(email);
     const clerkSecretKey = process.env.CLERK_SECRET_KEY;
     if (!clerkSecretKey) {
       throw new Error("CLERK_SECRET_KEY not configured");
@@ -151,10 +171,10 @@ export const createUserWithClerk = action({
       },
       body: JSON.stringify({
         // Corretto il formato di email_address e aggiunta la password obbligatoria
-        email_address: [email], 
+        email_address: [validatedEmail],
         password: temporaryPassword,
-        first_name: name.split(" ")[0] || name,
-        last_name: name.split(" ").slice(1).join(" ") || " ",
+        first_name: validatedName.split(" ")[0] || validatedName,
+        last_name: validatedName.split(" ").slice(1).join(" ") || " ",
         skip_password_requirement: false, // Forza l'inserimento della password appena generata
       }),
     });
@@ -169,8 +189,8 @@ export const createUserWithClerk = action({
 
     // 2. Salva in Convex con il clerkId tramite mutation
     return await ctx.runMutation(api.users._insertUserWithClerkId, {
-      name,
-      email,
+      name: validatedName,
+      email: validatedEmail,
       clerkId,
       status,
       role,

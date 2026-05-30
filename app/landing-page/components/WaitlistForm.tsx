@@ -11,6 +11,8 @@ import {
 
 type Sector = "clinica" | "medico" | "rsa" | "agenzia";
 
+const validEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 interface FormState {
   email: string;
   companyName: string;
@@ -37,10 +39,22 @@ export default function WaitlistForm() {
     async (e: React.FormEvent) => {
       e.preventDefault();
 
-      if (!form.email || !form.sector) {
+      const email = form.email.trim();
+      const companyName = form.companyName.trim();
+
+      if (!email || !form.sector) {
         setStatus({
           type: "error",
           message: "Inserisci email e seleziona il tuo settore.",
+        });
+
+        return;
+      }
+
+      if (!validEmailPattern.test(email)) {
+        setStatus({
+          type: "error",
+          message: "Inserisci un indirizzo email valido.",
         });
 
         return;
@@ -51,8 +65,8 @@ export default function WaitlistForm() {
 
       try {
         const result = await joinWaitlist({
-          email: form.email,
-          companyName: form.companyName || undefined,
+          email,
+          companyName: companyName || undefined,
           sector: form.sector as Sector,
         });
 

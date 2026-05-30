@@ -1,6 +1,14 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+function requireText(value: string, fieldName: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`${fieldName} obbligatorio.`);
+  }
+  return trimmed;
+}
+
 export const listPatients = query({
   args: {
     tenantId: v.optional(v.string()),
@@ -76,6 +84,12 @@ export const createPatient = mutation({
     emergencyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const firstName = requireText(args.firstName, "Nome");
+    const lastName = requireText(args.lastName, "Cognome");
+    const address = requireText(args.address, "Indirizzo");
+    const pathologies = args.pathologies.map((item) => item.trim()).filter(Boolean);
+    const emergencyNotes = args.emergencyNotes?.trim();
+
     let tenantId = "tenant_mock_123";
     const identity = await ctx.auth.getUserIdentity();
     if (identity) {
@@ -89,11 +103,11 @@ export const createPatient = mutation({
 
     return await ctx.db.insert("patients", {
       tenantId,
-      firstName: args.firstName,
-      lastName: args.lastName,
-      address: args.address,
-      pathologies: args.pathologies,
-      emergencyNotes: args.emergencyNotes,
+      firstName,
+      lastName,
+      address,
+      pathologies,
+      emergencyNotes: emergencyNotes || undefined,
     });
   },
 });

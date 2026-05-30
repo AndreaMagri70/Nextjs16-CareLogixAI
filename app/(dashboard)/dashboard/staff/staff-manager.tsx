@@ -49,6 +49,8 @@ const statusLabelMap: Record<string, string> = {
   inattivo: "Inattivo",
 };
 
+const validEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function getStatusVariant(status: string) {
   return statusVariantMap[status] ?? "muted";
 }
@@ -79,6 +81,12 @@ export function StaffManager() {
 
     if (!name || !email) {
       setMessage("Compila nome e email.");
+      setIsSaving(false);
+      return;
+    }
+
+    if (!validEmailPattern.test(email)) {
+      setMessage("Inserisci un indirizzo email valido.");
       setIsSaving(false);
       return;
     }
